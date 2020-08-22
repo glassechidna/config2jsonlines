@@ -65,6 +65,11 @@ Wow, it's like you're in my head. But to answer your question: yes it'll be
 embarrassing, but I'll have learned something new and I'll get to delete code,
 which is the only thing more pleasurable than writing code.
 
+**Should this instead have been implemented using AWS Glue?**
+
+I _think_ so? But I honestly can't wrap my head around Glue. I'd be delighted
+if someone else were to do so, I think I'd learn a lot from it.
+
 **Are those questions really _frequently_ asked?**
 
 No, but I couldn't think of another format to relay that information. My apologies
