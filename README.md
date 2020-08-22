@@ -34,3 +34,39 @@ There are two happy coincidental benefits to this as well:
 ## Deployment
 
 TODO.
+
+## Implementation
+
+Some people are into this sort of thing. 
+
+![](implementation.png)
+
+1. AWS SAM doesn't support configuring S3 event notifications for a bucket defined
+   outside of the same template as the function. So this part currently needs to be
+   done manually. A CloudFormation custom resource would be nicer.
+
+2. It would be nice to be "backfill" historical Config snapshots that were uploaded
+   to the input bucket before this solution was deployed. (This is actually why I 
+   went with the indirection of the SQS queue in the middle.)
+
+## FAQ
+
+**Why Go?**
+
+Given that a ~40MB gzipped Config snapshot can decompress to 1GB+ and there will be
+accounts out there bigger than mine, I decided that this needed to be implemented
+in a "streaming" fashion, i.e. it can process a file without having to decompress
+or parse the entire JSON first. I didn't know how to do this in any other language.
+
+**Are you going to be embarrassed to find out that Athena works perfectly fine
+with big Config snapshots and you just did something wrong?**
+
+Wow, it's like you're in my head. But to answer your question: yes it'll be 
+embarrassing, but I'll have learned something new and I'll get to delete code,
+which is the only thing more pleasurable than writing code.
+
+**Are those questions really _frequently_ asked?**
+
+No, but I couldn't think of another format to relay that information. My apologies
+for any deception.
+ 
