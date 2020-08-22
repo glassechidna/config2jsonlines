@@ -1,0 +1,96 @@
+Transform: AWS::Serverless-2016-10-31
+Parameters:
+  OutputBucketName:
+    Type: String
+  InputBucketName:
+    Type: String
+Globals:
+  Function:
+    AutoPublishAlias: live
+    CodeUri: ./config2jsonlines
+    Handler: config2jsonlines
+    MemorySize: 1024
+    Runtime: go1.x
+    Timeout: 120
+
+Resources:
+  S3Event:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./config2jsonlines
+      Environment:
+        Variables:
+          MODE: S3Event
+          QUEUE_URL: !Ref Queue
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt Queue.QueueName
+
+  S3Permission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref S3Event.Alias
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:aws:s3:::${InputBucketName}
+
+  Queue:
+    Type: AWS::SQS::Queue
+    Properties:
+      ReceiveMessageWaitTimeSeconds: 20
+      VisibilityTimeout: 150
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DeadLetterQueue.Arn
+        maxReceiveCount: 3
+
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+
+  Processor:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./config2jsonlines
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucketName
+          MODE: Processor
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Resource: !Sub arn:aws:s3:::${OutputBucketName}/*
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+                - s3:AbortMultipartUpload
+                - s3:ListBucketMultipartUploads
+                - s3:ListMultipartUploadParts
+            - Effect: Allow
+              Resource: "*"
+              Action:
+                - kms:Decrypt
+                - kms:Encrypt
+                - kms:GenerateDataKey*
+                - kms:ReEncrypt*
+              Condition:
+                ForAnyValue:StringLike:
+                  kms:EncryptionContext:aws:s3:arn:
+                    - !Sub arn:aws:s3:::${OutputBucketName}/*
+                    - !Sub arn:aws:s3:::${InputBucketName}/* # AWS Config doesn't support S3 SSE-KMS today, but maybe it will one day - one can hope.
+        - S3ReadPolicy:
+            BucketName: !Ref InputBucketName
+      Events:
+        SQS:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt Queue.Arn
+            BatchSize: 1
+            Enabled: true
+
+Outputs:
+  Processor:
+    Value: !Ref Processor.Version
+  S3Event:
+    Value: !Ref S3Event.Version
+  DeadLetterQueue:
+    Value: !Ref DeadLetterQueue
