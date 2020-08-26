@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -15,6 +16,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"io"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -46,7 +48,10 @@ func handleProcessor(ctx context.Context, event *events.SQSEvent) error {
 			"size":        input.Size,
 		})
 
-		err = processConfigSnapshot(ctx, api, input.Bucket, input.Key, os.Getenv("OUTPUT_BUCKET"), input.Key)
+		outputBucket := os.Getenv("OUTPUT_BUCKET")
+		outputPrefix := strings.Trim(os.Getenv("OUTPUT_PREFIX"), "/")
+		outputKey := strings.Trim(fmt.Sprintf("%s%s", outputPrefix, input.Key), "/")
+		err = processConfigSnapshot(ctx, api, input.Bucket, input.Key, outputBucket, outputKey)
 		if err != nil {
 			return err
 		}
